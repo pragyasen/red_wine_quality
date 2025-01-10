@@ -1,0 +1,311 @@
+library(mice) #deal with missing data
+library(corrplot) #plot for correlation matrix
+library(ggplot2) #visualization and plots
+library(ggpubr) #customizing ggplot2
+library(scales) #graphical scales map data to aesthetics
+library(caret) #deal with Classification And REgression Training CART
+library(dplyr) #data manipulation: filter and arrange
+library(tidyverse) #data manipulation
+library(sf) #plot mapping
+library(gganimate) #static visualization
+library(MASS) #deal with data set
+library(VIM) #tools for the visualization of missing or imputed values
+library(glmnet) #Lasso and Elastic-Net Regularization
+library(tidyr)
+library(randomForest)
+
+setwd("C:/Users/pragy/OneDrive/Desktop/555_Foundn_Of_ML/my_upload/Week12/term_project/wine+quality")
+
+#df<-read.csv("winequality-red.csv", sep = ";")
+#df_subset <- df[1:1000, ]
+#write.csv(df_subset, "winequality_subset_1000.csv", row.names = FALSE)
+
+df <- read.csv("winequality_subset_1000.csv")
+dim(df)
+
+str(df)
+summary(df)
+
+num.file <- paste(getwd(), "/dqames_num.csv", sep= "")
+cat.file <- paste(getwd(), "/dqames_cat.csv", sep= "")
+
+aggr_plot <- aggr(df, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(df), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
+
+set.seed(123)
+
+cor(df) %>%
+  as.data.frame() %>%
+  mutate(var1 = rownames(.)) %>%
+  gather(var2, value, -var1) %>%
+  arrange(desc(value)) %>%
+  group_by(value) %>%
+  filter(row_number()==1)
+
+#Correlation Matrix
+dfcor <- cor(df)
+corrplot(dfcor, method = "color", addCoef.col = "black",number.cex = .6,
+         tl.col = "black", tl.srt = 90, diag = FALSE)
+
+#Correlation of each factor to the Quality (decreasing order)
+dfcor <- cor(df)
+quality_cor <- dfcor[,12]
+absoutcome_cor <- abs(quality_cor)
+head(absoutcome_cor[order(absoutcome_cor, decreasing = TRUE)],12)
+
+q1 <- ggplot(df, aes(quality))+ 
+  geom_histogram() + 
+  labs(title = "Histogram of quality") + 
+  theme(plot.title=element_text(hjust=0.5)) +
+  geom_vline(aes(xintercept=mean(quality)), color="blue", linetype="dashed", size=1) +
+  geom_text(aes(x=5.6, label="Mean Value", y=400), colour="red", angle=90, vjust = 1.2, text=element_text(size=11))
+q1
+
+q2 <- ggplot(df, aes(sample=quality)) +
+  stat_qq(color="dodgerblue4") + 
+  stat_qq_line(color="red") +
+  scale_y_continuous(labels=function(y){y/10^6}) +
+  labs(title="QQ Plot for quality", y="Ordered Values") +
+  theme(plot.title=element_text(hjust=0.5))
+q2
+
+#Splitting Data (Training, Testing, Validation)
+# Training=70%, Testing=15%, Validation=15%
+split <- createDataPartition(df$quality, p = 0.7, list = FALSE)
+
+train_data <- df[split, ]
+temp_data <- df[-split, ]
+
+split_temp <- createDataPartition(temp_data$quality, p = 0.5, list = FALSE)
+
+validation_data <- temp_data[split_temp, ]
+test_data <- temp_data[-split_temp, ]
+
+
+#Simple Linear regression
+#Fit the linear regression model: quality ~ alcohol
+linear_model <- lm(quality ~ alcohol, data = train_data)
+
+#Summary of the linear regression model
+summary(linear_model)
+
+#Plotting the regression line
+ggplot(train_data, aes(x = alcohol, y = quality)) +
+  geom_point(color = "blue") +  # Scatter plot of data points
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # Add the regression line
+  labs(title = "Simple Linear Regression: Quality vs Alcohol",
+       x = "Alcohol",
+       y = "Quality") +
+  theme_minimal()
+
+# Predict values on the training data
+slr_predictions <- predict(linear_model, newdata = train_data)
+
+# Calculate RMSE for SLR
+slr_rmse <- sqrt(mean((train_data$quality - slr_predictions)^2))
+cat("RMSE for Simple Linear Regression (Training Data):", slr_rmse, "\n")
+
+# Predictions on Testing Data
+slr_test_pred <- predict(linear_model, newdata = test_data)
+
+# Predictions on Validation Data
+slr_validation_pred <- predict(linear_model, newdata = validation_data)
+
+# Calculate RMSE for Testing Data
+slr_test_rmse <- sqrt(mean((slr_test_pred - test_data$quality)^2))
+cat("RMSE for SLR on Test Data: ", slr_test_rmse, "\n")
+
+# Calculate RMSE for Validation Data
+slr_validation_rmse <- sqrt(mean((slr_validation_pred - validation_data$quality)^2))
+cat("RMSE for SLR on Validation Data: ", slr_validation_rmse, "\n")
+
+
+
+#Multiple Linear Regression
+# Fit the multiple linear regression model
+multiple_linear_model <- lm(quality ~ alcohol + volatile.acidity + total.sulfur.dioxide + citric.acid, data = train_data)
+
+# Summary of the multiple linear regression model
+summary(multiple_linear_model)
+
+# Predictions using the model (optional, if you want to make predictions for new data)
+predictions <- predict(multiple_linear_model, newdata = train_data)
+
+# Plotting the actual vs predicted values
+ggplot(data.frame(actual = train_data$quality, predicted = predictions), aes(x = actual, y = predicted)) +
+  geom_point(color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red") +  # The 45-degree line (ideal line where predicted = actual)
+  labs(title = "Actual vs Predicted Values: Multiple Linear Regression",
+       x = "Actual Quality",
+       y = "Predicted Quality") +
+  theme_minimal()
+
+# Calculate RMSE for MLR (Training data)
+mlr_rmse <- sqrt(mean((train_data$quality - predictions)^2))
+cat("RMSE for Multiple Linear Regression (Training Data):", mlr_rmse, "\n")
+
+mlr_test_pred <- predict(multiple_linear_model, newdata = test_data)
+
+# Predictions on Validation Data
+mlr_validation_pred <- predict(multiple_linear_model, newdata = validation_data)
+
+# Calculate RMSE for Testing Data
+mlr_test_rmse <- sqrt(mean((mlr_test_pred - test_data$quality)^2))
+cat("RMSE for MLR on Test Data: ", mlr_test_rmse, "\n")
+
+# Calculate RMSE for Validation Data
+mlr_validation_rmse <- sqrt(mean((mlr_validation_pred - validation_data$quality)^2))
+cat("RMSE for MLR on Validation Data: ", mlr_validation_rmse, "\n")
+
+
+
+#MLR with LASSO Technique
+# Prepare the data: Independent variables (X) and Dependent variable (y)
+X <- train_data[, c("alcohol", "volatile.acidity", "total.sulfur.dioxide", "citric.acid")]
+y <- train_data$quality
+
+# Standardizing the data (recommended for Lasso)
+X_standardized <- scale(X)
+# Fit a Lasso regression model using the glmnet function
+lasso_model <- glmnet(X_standardized, y, alpha = 1)
+
+summary(lasso_model)
+
+# Plot the Lasso path (coefficients vs. lambda)
+plot(lasso_model, xvar = "lambda", label = TRUE)
+
+# Cross-validation to find the best lambda (regularization parameter)
+cv_model <- cv.glmnet(X_standardized, y, alpha = 1)
+
+# Plot the cross-validation results
+plot(cv_model)
+# Best lambda from cross-validation
+best_lambda <- cv_model$lambda.min
+cat("Best lambda: ", best_lambda, "\n")
+
+# Get the coefficients for the model at the best lambda
+lasso_coefficients <- coef(lasso_model, s = best_lambda)
+
+# Print the coefficients
+print(lasso_coefficients)
+
+# Generate predictions using the fitted lasso model at the best lambda
+predictions <- predict(lasso_model, s = best_lambda, newx = X_standardized)
+
+# Convert predictions to a vector
+predictions <- as.vector(predictions)
+
+# Create a data frame with actual and predicted values
+results_df <- data.frame(actual = y, predicted = predictions)
+
+# Plot Actual vs Predicted values
+library(ggplot2)
+ggplot(results_df, aes(x = actual, y = predicted)) +
+  geom_point(color = "blue") +  # Points for actual vs predicted
+  geom_abline(slope = 1, intercept = 0, color = "red") +  # 45-degree line
+  labs(title = "Actual vs Predicted Values: Lasso Regression",
+       x = "Actual Quality",
+       y = "Predicted Quality") +
+  theme_minimal()
+
+# Calculate RMSE for Lasso (Training data)
+lasso_rmse <- sqrt(mean((y_train - predictions)^2))
+cat("RMSE for Lasso Regression (Training Data):", lasso_rmse, "\n")
+
+
+#R-squared calculation (for training data)
+# Compute R-squared
+y_true <- y_train
+rss <- sum((y_true - predictions)^2)  # Residual sum of squares
+tss <- sum((y_true - mean(y_true))^2)  # Total sum of squares
+r_squared <- 1 - (rss / tss)
+
+# Compute Adjusted R-squared
+n <- length(y_true)  # Number of observations
+p <- length(coef(lasso_model, s = best_lambda)) - 1  # Number of predictors (excluding intercept)
+adj_r_squared <- 1 - ((1 - r_squared) * (n - 1)) / (n - p - 1)
+
+cat("Adjusted R-squared for Lasso (Training Data):", adj_r_squared, "\n")
+
+# Predictions on Testing Data
+X_test <- test_data[, c("alcohol", "volatile.acidity", "total.sulfur.dioxide", "citric.acid")]
+X_test_scaled <- scale(X_test, center = attr(X_standardized, "scaled:center"), scale = attr(X_standardized, "scaled:scale"))
+lasso_test_pred <- predict(lasso_model, s = best_lambda, newx = X_test_scaled)
+
+# Predictions on Validation Data
+X_validation <- validation_data[, c("alcohol", "volatile.acidity", "total.sulfur.dioxide", "citric.acid")]
+X_validation_scaled <- scale(X_validation, center = attr(X_standardized, "scaled:center"), scale = attr(X_standardized, "scaled:scale"))
+lasso_validation_pred <- predict(lasso_model, s = best_lambda, newx = X_validation_scaled)
+
+# Calculate RMSE for Testing Data
+lasso_test_rmse <- sqrt(mean((lasso_test_pred - test_data$quality)^2))
+cat("RMSE for Lasso on Test Data: ", lasso_test_rmse, "\n")
+
+# Calculate RMSE for Validation Data
+lasso_validation_rmse <- sqrt(mean((lasso_validation_pred - validation_data$quality)^2))
+cat("RMSE for Lasso on Validation Data: ", lasso_validation_rmse, "\n")
+
+
+#Random Forest
+# Prepare the independent variables (X) and dependent variable (y)
+X_train <- train_data[, c("alcohol", "volatile.acidity", "total.sulfur.dioxide", "citric.acid")]
+y_train <- train_data$quality
+
+X_test <- test_data[, c("alcohol", "volatile.acidity", "total.sulfur.dioxide", "citric.acid")]
+y_test <- test_data$quality
+
+X_validation <- validation_data[, c("alcohol", "volatile.acidity", "total.sulfur.dioxide", "citric.acid")]
+y_validation <- validation_data$quality
+
+# Train the Random Forest model on the training data
+rf_model <- randomForest(x = X_train, y = y_train, ntree = 100, importance = TRUE)
+
+# Print model details
+print(rf_model)
+
+rf_train_pred <- predict(rf_model, newdata = X_train)
+train_data_plot <- data.frame(Actual = y_train, Predicted = rf_train_pred)
+
+ggplot(train_data_plot, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "purple", alpha = 0.5) +  # Change color as desired
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +  # Identity line
+  labs(title = "Predictions vs Actual (Training Data)",
+       x = "Actual Values",
+       y = "Predicted Values") +
+  theme_minimal()
+
+# Calculate RMSE for Random Forest (Training Data)
+rf_rmse <- sqrt(mean((train_data$quality - rf_train_pred)^2))
+cat("RMSE for Random Forest (Training Data):", rf_rmse, "\n")
+
+# Actual values (true values) from the training set
+y_true <- train_data$quality
+
+# Calculate the Residual Sum of Squares (RSS)
+rss <- sum((y_true - rf_train_pred)^2)
+
+# Calculate the Total Sum of Squares (TSS)
+tss <- sum((y_true - mean(y_true))^2)
+
+# Compute R-squared
+r_squared <- 1 - (rss / tss)
+
+# Output the R-squared value
+cat("R-squared for the Random Forest model (training data):", r_squared, "\n")
+
+# Predictions on Testing Data
+rf_test_pred <- predict(rf_model, newdata = X_test)
+
+# Predictions on Validation Data
+rf_validation_pred <- predict(rf_model, newdata = X_validation)
+
+# Calculate RMSE for Testing Data
+rf_test_rmse <- sqrt(mean((rf_test_pred - y_test)^2))
+cat("RMSE for Random Forest on Test Data: ", rf_test_rmse, "\n")
+
+# Calculate RMSE for Validation Data
+rf_validation_rmse <- sqrt(mean((rf_validation_pred - y_validation)^2))
+cat("RMSE for Random Forest on Validation Data: ", rf_validation_rmse, "\n")
+
+# Feature Importance
+print(importance(rf_model))
+
