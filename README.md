@@ -15,23 +15,23 @@ The [Red Wine Quality Dataset](https://archive.ics.uci.edu/dataset/186/wine+qual
 
 ## Model 1: Simple Linear Regression
 Using only 1 predictor variable, i.e, **alcohol** (highest correlation with quality) <br>
-<img src="/slr_summary.png" alt="" width="500" height="350"/>
-<img src="/slr_graph.png" alt="" width="400" height="350"/>
+<img src="/slr_summary.png" alt="" width="400" height="250"/>
+<img src="/slr_graph.png" alt="" width="300" height="250"/>
 
 ## Model 2: Multiple Linear Regression
 Using the top 4 variables with highest correlation (i.e., **alcohol, volatile.acidity, total.sulfur.dioxide, citric.acid**) to the quality variable. <br>
-<img src="/mlr_summary.png" alt="" width="500" height="350"/>
-<img src="/mlr_graph.png" alt="" width="400" height="350"/>
+<img src="/mlr_summary.png" alt="" width="400" height="250"/>
+<img src="/mlr_graph.png" alt="" width="300" height="250"/>
 
 ## Model 3: Multiple Linear Regression with Lasso Technique
 Using the Lasso technique to eliminate the effect of correlation within variables. It aims to shrink coefficients of some features to zero, effectively performing feature selection. <br>
-<img src="/mlr_lasso_summary.png" alt="" width="500" height="350"/>
-<img src="/mlr_lasso_graph.png" alt="" width="400" height="350"/>
+<img src="/mlr_lasso_summary.png" alt="" width="400" height="250"/>
+<img src="/mlr_lasso_graph.png" alt="" width="300" height="250"/>
 
 ## Model 4: Random Forest
 Since there is some degree of imbalance in the data, the Random Forest model could be a good fit. It also helps with feature selection which could handle the problem of correlation between 2 predictors. <br>
-<img src="/random_forest_summary.png" alt="" width="500" height="350"/>
-<img src="/random_forest_graph.png" alt="" width="400" height="350"/>
+<img src="/random_forest_summary.png" alt="" width="400" height="250"/>
+<img src="/random_forest_graph.png" alt="" width="300" height="250"/>
 
 ## Results
 **Model Comparison using various Metrics:**
