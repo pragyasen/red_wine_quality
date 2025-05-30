@@ -14,12 +14,12 @@ The [Red Wine Quality Dataset](https://archive.ics.uci.edu/dataset/186/wine+qual
 7. Random Forest
 
 ## Model 1: Simple Linear Regression
-Using only 1 predictor variable, i.e, **alcohol** (highest correlation with quality)
+Using only 1 predictor variable, i.e, **alcohol** (highest correlation with quality) <br>
 <img src="/slr_summary.png" alt="" width="500" height="350"/>
 <img src="/slr_graph.png" alt="" width="400" height="350"/>
 
 ## Model 2: Multiple Linear Regression
-Using the top 4 variables with highest correlation (i.e., **alcohol, volatile.acidity, total.sulfur.dioxide, citric.acid**) to the quality variable.
+Using the top 4 variables with highest correlation (i.e., **alcohol, volatile.acidity, total.sulfur.dioxide, citric.acid**) to the quality variable. <br>
 <img src="/mlr_summary.png" alt="" width="500" height="350"/>
 <img src="/mlr_graph.png" alt="" width="400" height="350"/>
 
